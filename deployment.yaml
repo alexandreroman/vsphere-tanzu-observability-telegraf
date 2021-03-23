@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegraf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      role: agent
+  template:
+    metadata:
+      labels:
+        role: agent
+    spec:
+      containers:
+        - name: agent
+          image: telegraf:1.18.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config-directory
+            - /etc/telegraf/telegraf.d
+          resources:
+            limits:
+              memory: 512Mi
+          ports:
+            - name: health
+              containerPort: 8888
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - mountPath: /etc/telegraf
+              name: telegraf
+            - mountPath: /etc/telegraf/telegraf.d
+              name: telegraf-plugins
+      volumes:
+        - name: telegraf
+          configMap:
+            name: telegraf
+        - name: telegraf-plugins
+          secret:
+            secretName: telegraf-plugins
